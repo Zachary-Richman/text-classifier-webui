@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <script defer>
+        const pull_api = async () => {
+            const url = "/view-all-files";
+            let temp_object = {}; // appendable and returnable
+
+            const files_fetch = await fetch(url);
+            const files_fetch_as_json = await files_fetch.json();
+
+            for (let i = 0; i < files_fetch_as_json.length; i++) {
+                const sheets_fetch = await fetch(url + "/" + files_fetch_as_json[i]);
+                const json_resp = await sheets_fetch.json();
+
+                // Using the specific file name as the key
+                temp_object[files_fetch_as_json[i]] = json_resp;
+            }
+            
+            return temp_object;
+        };
+
+        const create_first_dropdown = (api_response) => {
+            // Create a <select> element
+            let selectElement = document.createElement("select");
+            selectElement.setAttribute("id", "workbook-id");
+            selectElement.setAttribute("name", "workbook");
+            // Add a default "Available Worksheets" option
+            let defaultOption = new Option("Available Worksheets", "[SELECT A SHEET]");
+            selectElement.appendChild(defaultOption);
+
+            // Append options for each key in the response object
+            for (let key in api_response) {
+                let option = new Option(key, key);
+                selectElement.appendChild(option);
+            }
+
+            return selectElement;
+        };
+
+        // Async wrapper function to handle the logic
+        const initializeDropdown = async () => {
+            // Ensure form_id is fetched after DOM is loaded
+            const form_id = document.getElementById('form-id');
+
+            if (!form_id) {
+                console.error("Form element not found!");
+                return;
+            }
+
+            const response = await pull_api();
+            form_id.appendChild(create_first_dropdown(response));
+        };
+
+        // Call the async wrapper function to start the process
+        document.addEventListener("DOMContentLoaded", initializeDropdown);
+        const workbook = document.getElementById("workbook-id");
+            
+        workbook.addEventListener("click", async () =>{
+            const workbook_resp = document.getElementById("workbook-id").value;
+            let sheetElement = document.createElement("select");
+            sheetElement.setAttribute("name", "worksheet");
+            let defaultOption = new Option("Available Worksheets", "[SELECT A WORKSHEET]")
+            sheetElement.appendChild(defaultOption);
+
+            const api_response = await pull_api();
+            const valid_sheets = api_response[workbook_resp];
+
+            for(let i = 0; i < valid_sheets.length; i++){
+                let option = new Option(valid_sheets[i], valid_sheets[i]);
+                sheetElement.appendChild(option);
+            }
+
+            const form_id = document.getElementById('form-id');
+            form_id.appendChild(sheetElement);
+        });
+    </script>
+</head>
+<body>
+    <form method="POST" id="form-id">
+        <input type="submit" value="Update">
+
+        <input name="column-number" type="number" />
+        <select name="type">
+            <option value="Categorize">Categorize</option>
+            <option value="Create Categories">Create Categories</option>
+        </select>
+
+    </form>
+</body>
+</html>
